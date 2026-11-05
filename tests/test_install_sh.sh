@@ -20,6 +20,7 @@ newhome() { H="$(mktemp -d)"; export HOME="$H" SHELL=/bin/bash; }
 run() { bash "$SCRIPT" --no-check "$@" 2>&1; }
 count_bak() { ls "$1".bak-tommyapi-* 2>/dev/null | wc -l | tr -d ' '; }
 FAKE=sk-test-0123456789abcdef
+FRESH_RC=.bashrc; [ "$(uname -s)" = Darwin ] && FRESH_RC=.bash_profile   # fresh macOS HOME has no .bashrc
 
 echo "== 1. fresh install"
 newhome
@@ -32,18 +33,18 @@ check "codex provider table" grep -qx '\[model_providers.tommyapi\]' $H/.codex/c
 check "codex base_url has /v1" grep -qx 'base_url = "https://tommyapi.com/v1"' $H/.codex/config.toml
 check "codex wire_api responses" grep -qx 'wire_api = "responses"' $H/.codex/config.toml
 check "codex env_key" grep -qx 'env_key = "TOMMYAPI_KEY"' $H/.codex/config.toml
-check "bashrc exports TOMMYAPI_KEY" grep -q "export TOMMYAPI_KEY='$FAKE'" $H/.bashrc
+check "bashrc exports TOMMYAPI_KEY" grep -q "export TOMMYAPI_KEY='$FAKE'" $H/$FRESH_RC
 check "model_provider precedes first table" test "$(grep -n 'model_provider = ' $H/.codex/config.toml | head -1 | cut -d: -f1)" -lt "$(grep -n '^\[' $H/.codex/config.toml | head -1 | cut -d: -f1)"
 check "no backup when files were new" test "$(count_bak $H/.claude/settings.json)" = 0
 
 echo "== 2. idempotent"
-before="$(cat $H/.claude/settings.json $H/.codex/config.toml $H/.bashrc | cksum)"
+before="$(cat $H/.claude/settings.json $H/.codex/config.toml $H/$FRESH_RC | cksum)"
 run --key $FAKE >/dev/null; run --key $FAKE >/dev/null
-after="$(cat $H/.claude/settings.json $H/.codex/config.toml $H/.bashrc | cksum)"
+after="$(cat $H/.claude/settings.json $H/.codex/config.toml $H/$FRESH_RC | cksum)"
 check "content identical after 2 more runs" test "$before" = "$after"
-check "no new backups when nothing changed" test "$(count_bak $H/.claude/settings.json)$(count_bak $H/.codex/config.toml)$(count_bak $H/.bashrc)" = "000"
+check "no new backups when nothing changed" test "$(count_bak $H/.claude/settings.json)$(count_bak $H/.codex/config.toml)$(count_bak $H/$FRESH_RC)" = "000"
 check "single provider table" test "$(grep -c '^\[model_providers.tommyapi\]' $H/.codex/config.toml)" = 1
-check "single export block" test "$(grep -c 'export TOMMYAPI_KEY' $H/.bashrc)" = 1
+check "single export block" test "$(grep -c 'export TOMMYAPI_KEY' $H/$FRESH_RC)" = 1
 
 echo "== 3. preserves existing config, backs up, re-key, endpoint"
 newhome
@@ -101,7 +102,7 @@ run --key $FAKE >/dev/null
 run --uninstall >/dev/null
 check "settings.json removed" test ! -e $H/.claude/settings.json
 check "config.toml removed" test ! -e $H/.codex/config.toml
-check "bashrc removed" test ! -e $H/.bashrc
+check "bashrc removed" test ! -e $H/$FRESH_RC
 
 echo "== 6. --dry-run writes nothing"
 newhome
