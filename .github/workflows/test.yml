@@ -1,0 +1,28 @@
+name: test
+on: [push, pull_request]
+jobs:
+  bash:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n install.sh
+      - run: bash tests/test_install_sh.sh
+  powershell:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: pwsh 7
+        shell: pwsh
+        run: ./tests/test_install_ps1.ps1
+      - name: Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/test_install_ps1.ps1
