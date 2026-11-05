@@ -135,3 +135,4 @@ Write-Host ''
 Write-Host "passed=$($script:pass) failed=$($script:fail)"
 Remove-Item Env:TOMMYAPI_HOME -ErrorAction SilentlyContinue
 if ($script:fail -gt 0) { exit 1 }
+exit 0
